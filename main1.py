@@ -19,7 +19,7 @@ def read_root():
 # Allow frontend requests (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[" https://dewanshi-goel.github.io/sentiment-frontend/"],  # include 'null' for local file testing
+    allow_origins=["https://dewanshi-goel.github.io/sentiment-frontend/"],  # include 'null' for local file testing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
