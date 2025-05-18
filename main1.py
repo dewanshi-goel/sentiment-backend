@@ -5,15 +5,13 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from nltk.sentiment import SentimentIntensityAnalyzer
-import nltk
-import json
-import os
-
+import nltk, json, os, hashlib
 
 nltk.download('vader_lexicon')
 sia = SentimentIntensityAnalyzer()
 
 app = FastAPI()
+
 @app.get("/")
 def read_root():
     return {"message": "FastAPI Sentiment Analyzer is running!"}
@@ -27,16 +25,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-#path to user data JSON file
-USERS_FILE="users.json"
+# Path to user data JSON file
+USERS_FILE = "users.json"
 
+# Request models
 class TextRequest(BaseModel):
     text: str
 
 class LoginRequest(BaseModel):
-    email:str
-    password:str
+    email: str
+    password: str
 
+# Helper to hash password
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# Analyze endpoint
 @app.post("/analyze")
 def analyze_sentiment(request: TextRequest):
     scores = sia.polarity_scores(request.text)
@@ -52,8 +56,28 @@ def login(request: LoginRequest):
     with open(USERS_FILE, "r") as f:
         users = json.load(f)
 
-    if request.email in users and users[request.email] == request.password:
+    hashed = hash_password(request.password)
+    if request.email in users and users[request.email] == hashed:
         return {"message": "Login successful"}
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
+
+# ✅ Register endpoint
+@app.post("/register")
+def register(request: LoginRequest):
+    if not os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "w") as f:
+            json.dump({}, f)
+
+    with open(USERS_FILE, "r") as f:
+        users = json.load(f)
+
+    if request.email in users:
+        raise HTTPException(status_code=409, detail="User already exists")
+
+    users[request.email] = hash_password(request.password)
+
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f)
+
+    return {"message": "Registration successful"}
